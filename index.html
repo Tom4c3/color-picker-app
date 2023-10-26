@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Color Picker</title>
+    <style>
+        canvas {
+            border: 1px solid black;
+        }
+
+        #colorDisplay {
+            width: 50px;
+            height: 50px;
+            border: 1px solid black;
+        }
+
+        #savedColorsWrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        #savedColors, #savedColorCodes {
+            display: flex;
+            flex-direction: row;
+            flex-wrap: nowrap;
+        }
+
+        .savedColor {
+            width: 50px;
+            height: 50px;
+            border: 1px solid black;
+            margin: 5px 10px; /* 上下のマージンは5px、左右のマージンは10pxに設定 */
+        }
+
+        .savedColorCode {
+            width: 50px;
+            text-align: center;
+            margin: 5px 10px; /* 上下のマージンは5px、左右のマージンは10pxに設定 */
+            box-sizing: border-box;
+        }
+
+        #notification {
+            visibility: hidden;
+        }
+    </style>
+</head>
+<body>
+    <input type="file" id="fileInput">
+    <canvas id="canvas"></canvas>
+    <p id="colorInfo">Color Information will appear here.</p>
+    <div id="colorDisplay"></div>
+    <p>最大10件まで保存できます。</p>
+    <div id="savedColorsWrapper">
+        <div id="savedColors"></div>
+        <div id="savedColorCodes"></div>
+    </div>
+    <p id="notification">Copied to clipboard!</p>
+
+    <script>
+        const fileInput = document.getElementById("fileInput");
+        const canvas = document.getElementById("canvas");
+        const ctx = canvas.getContext("2d");
+        const colorInfo = document.getElementById("colorInfo");
+        const colorDisplay = document.getElementById("colorDisplay");
+        const savedColors = document.getElementById("savedColors");
+        const savedColorCodes = document.getElementById("savedColorCodes");
+        const notification = document.getElementById("notification");
+
+        let savedColorArray = [];
+
+        fileInput.addEventListener("change", function (event) {
+            const file = event.target.files[0];
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+
+            reader.onload = function () {
+                const img = new Image();
+                img.src = reader.result;
+                img.onload = function () {
+                    const aspectRatio = img.width / img.height;
+                    canvas.width = 400;
+                    canvas.height = 400 / aspectRatio;
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                };
+            };
+        });
+
+        function updateColorDisplay(color) {
+            colorDisplay.style.backgroundColor = color;
+        }
+
+        canvas.addEventListener("mousemove", function (event) {
+            const x = event.clientX - canvas.getBoundingClientRect().left;
+            const y = event.clientY - canvas.getBoundingClientRect().top;
+            const pixel = ctx.getImageData(x, y, 1, 1).data;
+            const colorCode = `#${pixel[0].toString(16).padStart(2, "0")}${pixel[1].toString(16).padStart(2, "0")}${pixel[2].toString(16).padStart(2, "0")}`;
+            colorInfo.textContent = `RGB: ${pixel[0]}, ${pixel[1]}, ${pixel[2]} | Color Code: ${colorCode}`;
+            updateColorDisplay(colorCode);
+        });
+
+        canvas.addEventListener("click", function (event) {
+            const x = event.clientX - canvas.getBoundingClientRect().left;
+            const y = event.clientY - canvas.getBoundingClientRect().top;
+            const pixel = ctx.getImageData(x, y, 1, 1).data;
+            const colorCode = `#${pixel[0].toString(16).padStart(2, "0")}${pixel[1].toString(16).padStart(2, "0")}${pixel[2].toString(16).padStart(2, "0")}`;
+
+            if (savedColorArray.includes(colorCode)) {
+                return;
+            }
+
+            if (savedColorArray.length >= 10) {
+                savedColorArray.shift();
+            }
+
+            savedColorArray.push(colorCode);
+            renderSavedColors();
+
+            navigator.clipboard.writeText(colorCode).then(function () {
+                notification.style.visibility = 'visible';
+                setTimeout(() => {
+                    notification.style.visibility = 'hidden';
+                }, 2000);
+            }).catch(function () {
+                alert("Failed to copy");
+            });
+        });
+
+        function renderSavedColors() {
+            savedColors.innerHTML = '';
+            savedColorCodes.innerHTML = '';
+            for (const color of savedColorArray) {
+                const colorDiv = document.createElement('div');
+                const colorCodeDiv = document.createElement('div');
+                colorDiv.className = 'savedColor';
+                colorDiv.style.backgroundColor = color;
+                colorCodeDiv.className = 'savedColorCode';
+                colorCodeDiv.textContent = color;
+                savedColors.appendChild(colorDiv);
+                savedColorCodes.appendChild(colorCodeDiv);
+            }
+        }
+    </script>
+</body>
+</html>
